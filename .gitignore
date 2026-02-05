@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+workspace/*.md
+workspace/daily/*.md
+
+# Keep template files in version control
+!workspace/SOUL.md
+!workspace/USER.md
+!workspace/MEMORY.md
