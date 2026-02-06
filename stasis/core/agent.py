@@ -58,6 +58,8 @@ class Agent:
             search_results = self.search.search(user_message, top_k=5)
             if search_results:
                 print(f'[Stasis] Found {len(search_results)} relevant memories')
+            else:
+                print('[Stasis] No relevant memories found, loading full context')
 
         # build system prompt with search results (or full memory if no search)
         system_prompt = build_system_prompt(self.memory, search_results=search_results)

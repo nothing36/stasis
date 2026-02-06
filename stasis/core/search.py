@@ -260,8 +260,13 @@ class MemorySearch:
             data = bm25_results.get(content) or vector_results.get(content)
             combined[content] = {**data, 'hybrid_score': hybrid_score}
 
-        # sort by hybrid score and return top k
-        ranked = sorted(combined.values(), key=lambda x: x['hybrid_score'], reverse=True)[:top_k]
+        # sort by hybrid score
+        ranked = sorted(combined.values(), key=lambda x: x['hybrid_score'], reverse=True)
+
+        # filter by minimum score threshold (0.3) and limit to top_k
+        # this prevents returning irrelevant results
+        min_score = 0.3
+        filtered = [r for r in ranked if r['hybrid_score'] >= min_score][:top_k]
 
         return [
             SearchResult(
@@ -272,7 +277,7 @@ class MemorySearch:
                 timestamp=r['timestamp'],
                 source_file=r['source_file']
             )
-            for r in ranked
+            for r in filtered
         ]
 
     def _chunk_content(self, content: str, source_file: str) -> List[dict]:
