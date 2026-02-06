@@ -193,6 +193,9 @@ class MemorySearch:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
+        # sanitize query for FTS5 (escape special characters)
+        fts_query = self._sanitize_fts_query(query)
+
         # BM25 search via FTS5
         cursor.execute('''
             SELECT content, source_file, line_start, line_end, timestamp, bm25(memory_fts) as bm25_score
@@ -200,7 +203,7 @@ class MemorySearch:
             WHERE memory_fts MATCH ?
             ORDER BY bm25_score
             LIMIT ?
-        ''', (query, top_k * 2))  # get more for hybrid ranking
+        ''', (fts_query, top_k * 2))  # get more for hybrid ranking
 
         bm25_results = {
             row[0]: {
@@ -361,3 +364,14 @@ class MemorySearch:
             return True  # never indexed
 
         return row[0] != current_hash
+
+    def _sanitize_fts_query(self, query: str) -> str:
+        """
+        Sanitize query for FTS5 to avoid syntax errors.
+
+        Wraps query in quotes and escapes internal quotes.
+        """
+        # escape double quotes
+        sanitized = query.replace('"', '""')
+        # wrap in quotes to treat as literal phrase
+        return f'"{sanitized}"'
