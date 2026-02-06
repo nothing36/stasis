@@ -31,3 +31,7 @@ workspace/daily/*.md
 !workspace/SOUL.md
 !workspace/USER.md
 !workspace/MEMORY.md
+!workspace/STYLE.md
+
+# Search index
+workspace/.stasis/
