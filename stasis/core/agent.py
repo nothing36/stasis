@@ -5,27 +5,38 @@ Handles message flow, memory extraction, and provider interaction.
 """
 
 import re
-from typing import List
+from typing import List, Optional
 
 from ..providers.base import Provider, Message
 from .memory import Memory
 from .prompt import build_system_prompt, build_checkin_prompt
+from .search import MemorySearch, SearchResult
 
 
 class Agent:
     """Main agent that orchestrates conversations with persistent memory."""
 
-    def __init__(self, provider: Provider, memory: Memory):
+    def __init__(self, provider: Provider, memory: Memory, enable_search: bool = True):
         """
         Initialize the agent.
 
         Args:
             provider: LLM provider instance
             memory: Memory manager instance
+            enable_search: Whether to enable memory search (default True)
         """
         self.provider = provider
         self.memory = memory
         self.conversation_history: List[Message] = []
+
+        # initialize search engine
+        self.search_enabled = enable_search
+        if enable_search:
+            self.search = MemorySearch(memory.workspace)
+            # ensure index is up to date
+            self.search.index_memory_file()
+        else:
+            self.search = None
 
     def chat(self, user_message: str) -> str:
         """
@@ -40,8 +51,16 @@ class Agent:
         # add user message to history
         self.conversation_history.append(Message(role='user', content=user_message))
 
-        # build system prompt with current memory state
-        system_prompt = build_system_prompt(self.memory)
+        # run search based on user's query to get relevant context
+        search_results = None
+        if self.search_enabled and self.search:
+            print(f'[Stasis] Searching memory for: {user_message[:50]}...')
+            search_results = self.search.search(user_message, top_k=5)
+            if search_results:
+                print(f'[Stasis] Found {len(search_results)} relevant memories')
+
+        # build system prompt with search results (or full memory if no search)
+        system_prompt = build_system_prompt(self.memory, search_results=search_results)
 
         # get model config for max tokens
         from ..config import settings

@@ -4,20 +4,26 @@ System prompt construction.
 Builds prompts that tell the LLM how to behave and use memory tags.
 """
 
+from typing import List, Optional
 from .memory import Memory
 
 
-def build_system_prompt(memory: Memory) -> str:
+def build_system_prompt(memory: Memory, search_results: Optional[List] = None) -> str:
     """
     Build the complete system prompt with memory context.
 
     Args:
         memory: Memory instance to pull context from
+        search_results: Optional search results to use instead of full memory
 
     Returns:
         Full system prompt string
     """
-    context = memory.build_context()
+    # build context with search results if provided
+    if search_results:
+        context = _build_search_context(memory, search_results)
+    else:
+        context = memory.build_context()
 
     prompt = f"""You are Stasis, a personal AI assistant with persistent memory.
 
@@ -48,11 +54,8 @@ Discussed Filamanage wiring. Decided to use JST connectors instead of direct sol
 - Use <save_daily> for session-specific context that might be useful short-term
 - Use <save_memory> for durable facts that matter long-term
 
-## Future: Memory Search (not yet implemented)
-When memory grows large, you'll be able to search it with:
-<memory_search>what did we decide about the API design?</memory_search>
-
-This will run hybrid search (BM25 + vector embeddings) and inject relevant results. For now, just use what's in <memory_context>.
+## Memory Search (Phase 2 - Auto-enabled)
+Memory search is now active. The system automatically searches for relevant context based on the user's query and provides the most relevant memories instead of loading everything. Search uses hybrid BM25 + vector embeddings for accurate retrieval.
 </memory_instructions>
 
 <role>
@@ -96,3 +99,41 @@ This is a proactive message, so make it feel natural and helpful, not intrusive.
 </task>"""
 
     return prompt
+
+
+def _build_search_context(memory: Memory, search_results: List) -> str:
+    """
+    Build context using search results instead of full memory.
+
+    Args:
+        memory: Memory instance
+        search_results: Search results from MemorySearch
+
+    Returns:
+        Formatted context string
+    """
+    sections = []
+
+    # always include SOUL and USER
+    soul = memory.get_soul()
+    if soul:
+        sections.append(f'# SOUL\n\n{soul}')
+
+    user = memory.get_user()
+    if user:
+        sections.append(f'# USER\n\n{user}')
+
+    # replace MEMORY with search results
+    if search_results:
+        memory_section = '# RELEVANT MEMORIES (Search Results)\n\n'
+        for i, result in enumerate(search_results, 1):
+            memory_section += f'**Result {i}** (score: {result.score:.2f}, lines {result.line_start}-{result.line_end})\n'
+            memory_section += f'{result.content}\n\n'
+        sections.append(memory_section.strip())
+
+    # still include recent daily logs
+    recent = memory.get_recent_daily(days=2)
+    if recent:
+        sections.append(f'# RECENT ACTIVITY\n\n{recent}')
+
+    return '\n\n---\n\n'.join(sections)
