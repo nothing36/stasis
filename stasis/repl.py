@@ -37,6 +37,10 @@ def main():
             sys.exit(1)
 
         agent = Agent(provider=provider, memory=memory)
+
+        # load previous session if available
+        agent.load_session()
+
         print(f'[Stasis] Ready\n')
 
     except Exception as e:
@@ -56,6 +60,7 @@ def main():
                 command = user_input[1:].lower()
 
                 if command == 'exit':
+                    agent.save_session()
                     break
                 elif command == 'clear':
                     agent.clear_history()
@@ -75,6 +80,7 @@ def main():
                 print(f'[Stasis] Error: {e}\n')
 
         except (KeyboardInterrupt, EOFError):
+            agent.save_session()
             print('\nExiting...')
             break
 

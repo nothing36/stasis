@@ -4,7 +4,9 @@ Agent logic for managing conversations with memory.
 Handles message flow, memory extraction, and provider interaction.
 """
 
+import json
 import re
+from pathlib import Path
 from typing import List, Optional
 
 from ..providers.base import Provider, Message
@@ -131,6 +133,43 @@ class Agent:
         """Clear the conversation history (keeps memory intact)."""
         self.conversation_history = []
         print('[Stasis] Conversation history cleared')
+
+    def save_session(self) -> None:
+        """Save recent conversation history for next session."""
+        from ..config import settings
+        depth = settings.history_depth
+
+        if depth <= 0 or not self.conversation_history:
+            return
+
+        session_path = self.memory.workspace / '.stasis' / 'last_session.json'
+        session_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # keep last N exchanges (1 exchange = 2 messages)
+        max_messages = depth * 2
+        recent = self.conversation_history[-max_messages:]
+
+        data = [{'role': msg.role, 'content': msg.content} for msg in recent]
+
+        session_path.write_text(json.dumps(data, indent=2), encoding='utf-8')
+        print(f'[Stasis] Session saved ({len(recent)} messages)')
+
+    def load_session(self) -> None:
+        """Load conversation history from previous session."""
+        session_path = self.memory.workspace / '.stasis' / 'last_session.json'
+
+        if not session_path.exists():
+            return
+
+        try:
+            data = json.loads(session_path.read_text(encoding='utf-8'))
+            self.conversation_history = [
+                Message(role=msg['role'], content=msg['content'])
+                for msg in data
+            ]
+            print(f'[Stasis] Loaded {len(self.conversation_history)} messages from last session')
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f'[Stasis] Failed to load session: {e}')
 
     def _process_memory_tags(self, response: str) -> str:
         """

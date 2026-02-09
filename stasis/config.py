@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # optional overrides
     max_tokens: Optional[int] = Field(default=None, validation_alias='STASIS_MAX_TOKENS')
 
+    # session history - number of exchanges to retain across restarts
+    history_depth: int = Field(default=5, validation_alias='STASIS_HISTORY_DEPTH')
+
     @field_validator('workspace', mode='before')
     @classmethod
     def expand_workspace_path(cls, v: str | Path) -> Path:
