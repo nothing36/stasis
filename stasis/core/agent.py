@@ -147,12 +147,18 @@ class Agent:
         # extract and save <save_memory> tags
         memory_pattern = r'<save_memory>(.*?)</save_memory>'
         memory_matches = re.findall(memory_pattern, cleaned, re.DOTALL)
+        memory_changed = False
         for match in memory_matches:
             content = match.strip()
             if content:
                 preview = content[:50] + '...' if len(content) > 50 else content
                 print(f'[Stasis] Extracting memory: {preview}')
                 self.memory.append_memory(content)
+                memory_changed = True
+
+        # re-index if new memories were saved
+        if memory_changed and self.search_enabled and self.search:
+            self.search.index_memory_file()
 
         # extract and save <save_daily> tags
         daily_pattern = r'<save_daily>(.*?)</save_daily>'
