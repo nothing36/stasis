@@ -122,6 +122,11 @@ class MemorySearch:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
+        # purge all existing chunks for this file before re-inserting so stale
+        # chunks from previous versions don't accumulate in the index
+        cursor.execute('DELETE FROM memory_fts WHERE source_file = ?', (str(memory_path),))
+        cursor.execute('DELETE FROM memory_embeddings WHERE source_file = ?', (str(memory_path),))
+
         indexed_count = 0
         for chunk in chunks:
             # check if chunk already indexed (by content hash)
